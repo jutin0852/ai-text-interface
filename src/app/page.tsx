@@ -100,7 +100,7 @@ export default function Home() {
                 {detectedLanguage.error ? (
                   <span className="text-red-500">{detectedLanguage.error}</span>
                 ) : (
-                  `Detected Language: ${detectedLanguage.language?.code}`
+                  `Detected Language: ${detectedLanguage.language?.readable}`
                 )}
               </p>
             </div>

@@ -80,8 +80,8 @@ export default function Home() {
   const isSummaryButtonVisible = characterCount >= 150;
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-      {/* Chat Output (Messages) */}
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+      {/* Chat Output Messages */}
       <div className="flex-1 overflow-y-auto space-y-4" ref={chatOutputRef}>
         {/* Input Text */}
         {inputText && (

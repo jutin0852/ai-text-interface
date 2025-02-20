@@ -1,101 +1,216 @@
-import Image from "next/image";
+"use client";
+import LanguageSelector from "@/component/LanguageSelector";
+import { detectLanguage } from "@/utils/languageDetector";
+import { translateText } from "@/utils/translator";
+import { summarize } from "@/utils/summerizer";
+
+import { useState, useEffect, useRef } from "react";
+import { PaperAirplaneIcon } from "@heroicons/react/16/solid";
+
+interface DetectedLanguageType {
+  language?: { readable: string; code: string };
+  confidence?: string;
+  error?: string;
+}
+
+interface TranslatedTextType {
+  translation?: string;
+  error?: string;
+}
+
+interface SummaryTextType {
+  summary?: string | undefined;
+  error?: string;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [inputText, setInputText] = useState("");
+  const [detectedLanguage, setDetectedLanguage] =
+    useState<DetectedLanguageType | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
+  const [translatedText, setTranslatedText] =
+    useState<TranslatedTextType | null>(null);
+  const [summaryText, setSummaryText] = useState<SummaryTextType | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const chatOutputRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to the latest content
+  useEffect(() => {
+    if (chatOutputRef.current) {
+      chatOutputRef.current.scrollTop = chatOutputRef.current.scrollHeight;
+    }
+  }, [inputText, detectedLanguage, translatedText, summaryText]);
+
+  const handleDetectLanguage = async () => {
+    const result = await detectLanguage(inputText);
+    setDetectedLanguage(result);
+  };
+
+  const handleTranslateLanguage = async () => {
+    setIsTranslating(true);
+    const result = await translateText(inputText, {
+      selectedLanguage,
+      detectedLanguage: detectedLanguage?.language?.code,
+    });
+    setTranslatedText(result);
+    setIsTranslating(false);
+  };
+
+  const handleSummarize = async () => {
+    setIsSummarizing(true);
+    const result = await summarize(inputText, detectedLanguage?.language?.code);
+    setSummaryText(result);
+    setIsSummarizing(false);
+  };
+
+  // Clear chat and reset all states
+  const handleClearChat = () => {
+    setInputText("");
+    setDetectedLanguage(null);
+    setTranslatedText(null);
+    setSummaryText(null);
+    setIsSummarizing(false);
+    setIsTranslating(false);
+  };
+
+  // Check if input has 150 characters or more
+  const characterCount = inputText.length;
+  const isSummaryButtonVisible = characterCount >= 150;
+
+  return (
+    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+      {/* Chat Output (Messages) */}
+      <div className="flex-1 overflow-y-auto space-y-4" ref={chatOutputRef}>
+        {/* Input Text */}
+        {inputText && (
+          <div className="flex justify-end">
+            <div className="bg-blue-500 text-white p-3 rounded-lg max-w-[70%] shadow-md">
+              <p className="text-sm">{inputText}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Detected Language */}
+        {detectedLanguage && (
+          <div className="flex justify-start">
+            <div className="bg-white p-3 rounded-lg max-w-[70%] shadow-md">
+              <p className="text-sm">
+                {detectedLanguage.error ? (
+                  <span className="text-red-500">{detectedLanguage.error}</span>
+                ) : (
+                  `Detected Language: ${detectedLanguage.language?.code}`
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Translate Button and Dropdown (Below Detected Language) */}
+        {detectedLanguage && !detectedLanguage.error && (
+          <div className="flex justify-start gap-2">
+            <LanguageSelector
+              selectedLanguage={selectedLanguage}
+              setSelectedLanguage={setSelectedLanguage}
+              aria-label="Select target language"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <button
+              className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:ring-offset-2 shadow-md"
+              onClick={handleTranslateLanguage}
+              disabled={isTranslating}
+              aria-label="Translate text"
+            >
+              {isTranslating ? (
+                <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+              ) : (
+                "Translate"
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Translated Text */}
+        {translatedText && (
+          <div className="flex justify-start">
+            <div className="bg-white p-3 rounded-lg max-w-[70%] shadow-md">
+              <p className="text-sm">
+                {translatedText.error ? (
+                  <span className="text-red-500">{translatedText.error}</span>
+                ) : (
+                  translatedText.translation
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Summary Text */}
+        {summaryText && (
+          <div className="flex justify-start">
+            <div className="bg-white p-3 rounded-lg max-w-[70%] shadow-md">
+              <p className="text-sm">
+                {summaryText.error ? (
+                  <span className="text-red-500">{summaryText.error}</span>
+                ) : (
+                  summaryText.summary
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Chat Input and Actions */}
+      <div className="mt-4 space-y-2">
+        <textarea
+          className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none shadow-sm"
+          rows={2}
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="Enter text..."
+          aria-label="Enter text for translation and summarization"
+        />
+
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          {/* Clear Chat Button */}
+          <button
+            className="flex-1 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-700 focus:ring-offset-2 shadow-md"
+            onClick={handleClearChat}
+            aria-label="Clear chat"
           >
-            Read our docs
-          </a>
+            Clear Chat
+          </button>
+          {/* Detect Language Button */}
+          <button
+            className="flex-1 p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:ring-offset-2 shadow-md"
+            onClick={handleDetectLanguage}
+            aria-label="Detect language"
+          >
+            Detect language
+            <PaperAirplaneIcon className="size-7 inline-block" />
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Summarize Button (Conditional) */}
+        {isSummaryButtonVisible &&
+          detectedLanguage &&
+          !detectedLanguage.error && (
+            <button
+              className="w-full p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-700 focus:ring-offset-2 shadow-md"
+              onClick={handleSummarize}
+              disabled={isSummarizing}
+              aria-label="Summarize text"
+            >
+              {isSummarizing ? (
+                <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+              ) : (
+                "Summarize"
+              )}
+            </button>
+          )}
+      </div>
     </div>
   );
 }
